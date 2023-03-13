@@ -213,7 +213,7 @@ Want to read it back?
 ```{r}
 showing_off <- dbReadTable(con, "my_table_name")
 
-showing_off 
+glimpse(showing_off)
 ```
 
 What if you want to write your own SQL?
