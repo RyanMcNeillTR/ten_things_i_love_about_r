@@ -213,8 +213,7 @@ Want to read it back?
 ```{r}
 showing_off <- dbReadTable(con, "my_table_name")
 
-showing_off %>%
-  slice(1:100) # this tells me to just provide records 1 through 100
+showing_off 
 ```
 
 What if you want to write your own SQL?
