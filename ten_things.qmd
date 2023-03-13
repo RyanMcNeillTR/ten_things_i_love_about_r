@@ -226,7 +226,7 @@ You can do it a couple ways.
 # first way
 showing_off <- dbGetQuery(con, "select indicator, x2000 from my_table_name")
 
-showing_off
+glimpse(showing_off)
 ```
 
 Second way.
