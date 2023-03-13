@@ -1,0 +1,462 @@
+---
+title: "Ten Things I Love About R"
+format: html
+editor: visual
+---
+
+# The tidyverse
+
+When I first started using R, there was no [tidyverse](https://www.tidyverse.org). There was just base R, which caused me heartburn.
+
+But the tidyverse changed all that. It makes using R a breeze.
+
+The tidyverse has packages for [reading data](https://readr.tidyverse.org), [manipulating data](https://dplyr.tidyverse.org), [cleaning data](https://tidyr.tidyverse.org) and many other things.
+
+You can install them with just a simple command.
+
+```{r}
+#install.packages(tidyverse)
+```
+
+Then you can load all the packages at once:
+
+```{r}
+library(tidyverse)
+```
+
+The people behind the tidyverse believe in what they call tidy data. It's a concept we use every single day.
+
+Each column is a variable. Each record is an observation. Every cell is a single value.
+
+Those concepts flow through other packages not in the tidyverse, but adhere to tidy data principles.
+
+For example, [sf](https://r-spatial.github.io/sf/) is a GIS package that adheres to tidy principles, which you'll see below. For rasters, there's [stars](https://r-spatial.github.io/stars/) package that's meant for spatio-temporal arrays.
+
+For machine learning/modelling, there's [tidymodels](https://www.tidymodels.org).
+
+One other thing. You'll notice a number of R packages, particularly in the tidyverse, have these
+
+# Import Data
+
+Importing data is a pain in the butt. I think R makes some of those tasks easier.
+
+You can deal with lots of
+
+For example, if I need to get data into Postgres or SQL Server, I'll use R as an intermediary.
+
+I can use the tidyverse's [readr](https://readr.tidyverse.org).
+
+```{r}
+single_dataset <- read_csv("./data/importing/pop_area_by_country_by_quintile_2002_1_2023_02_17_20_40_48.csv")
+```
+
+You'll see there are other [readr functions](https://readr.tidyverse.org/reference/index.html) to help you import data.
+
+Sidenote: Have a SAS, SPSS or Stata dataset? You can import it with [haven](https://haven.tidyverse.org).
+
+One thing I like to do is import everything as character, then later convert to appropriate data types. I can do that easily with [read_csv](https://readr.tidyverse.org/reference/read_delim.html).
+
+```{r}
+single_dataset <- read_csv("./data/importing/pop_area_by_country_by_quintile_2002_1_2023_02_17_20_40_48.csv", col_types = cols(.default = "c"))
+```
+
+# FS
+
+OK. Say you have a directory of files. You want to import them all into a single dataset.
+
+There's a tidy-friendly package called [fs](https://fs.r-lib.org) for working with file systems.
+
+You can install it like this:
+
+```{r}
+#install.packages("fs")
+```
+
+Ok back to the topic at hand.
+
+Let's initialize fs.
+
+```{r}
+library(fs)
+```
+
+What's in our directory?
+
+```{r}
+dir_ls(path="./data/importing")
+```
+
+Look at all those files? Sucky.
+
+But fs makes it easy.
+
+```{r}
+imported_data_collection <- dir_ls(path="./data/importing") %>%
+  map_df(read_csv, .id = "file", col_types = cols(.default = "c")) # map applies a function to each record...so if each filename from dir_ls is a record, this applies read_csv to each record. 
+
+imported_data_collection
+```
+
+And, take note how it also includes the filename from which that data originated. Useful.
+
+# Clean column names
+
+I use a single function from the [janitor package](https://sfirke.github.io/janitor/index.html). More precisely: I use [clean_names](https://sfirke.github.io/janitor/reference/clean_names.html) constantly.
+
+The data we just imported gives us a perfect use case. Here are our ugly column names.
+
+```{r}
+colnames(imported_data_collection)
+```
+
+Yuck. But we can use clean_names:
+
+```{r}
+imported_data_collection_fixed <- imported_data_collection %>%
+  janitor::clean_names() # Notice here that I used the library name and function name. You can do this if you don't want to load the entire package into memory. 
+
+imported_data_collection_fixed
+```
+
+# Work with dates
+
+```{r}
+library(nycflights13)
+library(lubridate)
+```
+
+We can use lubridate to do some nice things.
+
+```{r}
+flights %>% 
+  select(year, month, day, hour, minute) %>% 
+  mutate(departure = make_datetime(year, month, day, hour, minute))
+```
+
+We can easily extract elements of the date.
+
+```{r}
+flights %>% 
+  select(year, month, day, hour, minute) %>% 
+  mutate(departure = make_datetime(year, month, day, hour, minute)) %>%
+  select(departure) %>%
+  mutate(the_year = year(departure),
+         the_day = day(departure))
+```
+
+And then we can do all kinds of things with differences in times.
+
+```{r}
+make_datetime_100 <- function(year, month, day, time) {
+  make_datetime(year, month, day, time %/% 100, time %% 100)
+}
+
+flights_dt <- flights %>% 
+  filter(!is.na(dep_time), !is.na(arr_time)) %>% 
+  mutate(
+    dep_time = make_datetime_100(year, month, day, dep_time),
+    arr_time = make_datetime_100(year, month, day, arr_time),
+    sched_dep_time = make_datetime_100(year, month, day, sched_dep_time),
+    sched_arr_time = make_datetime_100(year, month, day, sched_arr_time)
+  ) %>% 
+  select(origin, dest, ends_with("delay"), ends_with("time"))
+
+flights_dt
+```
+
+You can do simple date comparisons.
+
+```{r}
+flights_dt %>% 
+  mutate(late_departure = difftime(ymd_hms(sched_dep_time), ymd_hms(dep_time), units="secs"))
+```
+
+# Interact with databases
+
+OK. I've imported my data and I want to send it to Postgres.
+
+[RPostgres](https://rpostgres.r-dbi.org) makes that easy.
+
+First, if needed, install via:
+
+```{r}
+#install.packages("RPostgres")
+```
+
+To connect with the DB, you first need to set up a little connection string to the DB. If you've ever used ODBC, it's kinda similar to that process.
+
+Here's one for a local Postgres install. Notice I used the askForPassword function. That's so I don't encode my username and password when I plan to upload this to Github.
+
+```{r}
+library(RPostgres)
+
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = 'test2', 
+                 host = "localhost", 
+                 port = 5432, # or any other port specified by your DBA
+                 user = "rstudio", 
+                 password = "baseball1"
+)
+
+```
+
+From here, you can do [all kinds of things](https://rpostgres.r-dbi.org/reference/index.html).
+
+Want to send our dataset to the DB?
+
+```{r}
+dbWriteTable(con, "my_table_name", imported_data_collection_fixed, overwrite=TRUE)
+```
+
+Want to read it back?
+
+```{r}
+showing_off <- dbReadTable(con, "my_table_name")
+
+showing_off %>%
+  slice(1:100) # this tells me to just provide records 1 through 100
+```
+
+What if you want to write your own SQL?
+
+You can do it a couple ways.
+
+```{r}
+# first way
+showing_off <- dbGetQuery(con, "select country, pop from my_table_name")
+
+showing_off
+```
+
+Second way.
+
+```{r}
+results <- dbSendQuery(con, "select country, pop from my_table_name")
+dbFetch(results, n=100) 
+```
+
+But wait. There's more. Entering the chat now is [dbplyr](https://dbplyr.tidyverse.org), which uses dplyr verbs to interact with a database. Sweet.
+
+```{r}
+library(dbplyr)
+```
+
+Now say you want to interact with a particular table.
+
+First create a connection to that table like so:
+
+```{r}
+my_dbplyr_connection <- tbl(con, "my_table_name")
+
+my_dbplyr_connection
+```
+
+To me, one of the real time-saving features of dbplyr is how it makes select statements much easier.
+
+Say you just want to extract country, gid_0, pop and hr_area_m2 --- you can use [tidyselectors](https://tidyselect.r-lib.org/reference/language.html) that make it easier than writing a traditional select statement in SQL.
+
+```{r}
+my_dbplyr_connection %>%
+  select(rowid, gid_0, starts_with("defo_")) # this says: give me all the columns between country and pop
+```
+
+# Wrangling data
+
+OK. One thing we need to add is the year of the data, as well as the quintile. We can extract those from the file name using [str_extract](https://stringr.tidyverse.org/reference/str_extract.html) and [regular expressions](https://cran.r-project.org/web/packages/stringr/vignettes/regular-expressions.html).
+
+```{r}
+my_pattern <- "pop_area_by_country_by_quintile_(20\\d\\d)_(\\d)_"
+
+imported_data_collection_fixed_2 <- imported_data_collection_fixed %>%
+  mutate(the_year = as.integer(str_extract(file, my_pattern, group=1)),
+         the_quintile = as.integer(str_extract(file, my_pattern, group=2)))
+
+imported_data_collection_fixed_2
+```
+
+Cool huh?
+
+# Pivot Data
+
+```{r}
+imported_data_collection_fixed_2 %>%
+  mutate(pop = as.numeric(pop),
+         hr_area_m2 = as.numeric(hr_area_m2)) %>%
+  group_by(country, the_year) %>%
+  summarise(tot_pop = sum(pop),
+            tot_area = sum(hr_area_m2)) %>%
+  pivot_wider(names_from = the_year, values_from = c("tot_pop", "tot_area"))
+```
+
+# Easy charting
+
+```{r}
+ready_to_chart <- imported_data_collection_fixed_2 %>%
+  mutate(pop = as.numeric(pop),
+         hr_area_m2 = as.numeric(hr_area_m2)) %>%
+  group_by(country, the_year) %>%
+  summarise(tot_pop = sum(pop),
+            tot_area = sum(hr_area_m2)) %>%
+  filter(country %in% c("Brazil", "China"))
+
+ready_to_chart
+```
+
+```{r}
+p1 <- ggplot(data=ready_to_chart, aes(x=the_year, y=tot_pop, group=country, color=country)) + 
+  geom_line() 
+
+p1
+```
+
+```{r}
+p2 <- ggplot(data=ready_to_chart, aes(x=the_year, y=tot_area, group=country, color=country)) + 
+  geom_line() 
+
+p2
+```
+
+Easily put them side by side.
+
+```{r}
+library(patchwork)
+p1 + p2
+```
+
+# Do GIS stuff
+
+OK. So we've all traditionally worked with desktop applications, such as QGIS or ArcGIS.
+
+```{r}
+# install.packages("sf")
+```
+
+```{r}
+library(sf)
+```
+
+First, it's simple to load a shapefile.
+
+```{r}
+global_geoms <- st_read("./data/gis/the_geoms_replacement.gpkg")
+```
+
+This is a massive set of vectors. Let's pull out a few using a buffer.
+
+One simple way is to use [tribble](https://tibble.tidyverse.org/reference/tribble.html), which makes it easy to create a table on the fly. Let's create a dot for Bangkok.
+
+```{r}
+bangkok_dot <- tribble(
+  ~site, ~x, ~y,
+  "Bangkok", 100.494167, 13.7525 
+  ) %>%
+  st_as_sf(coords = c("x", "y"), crs = 4326)
+```
+
+Now we've got a dot. Let's buffer that dot.
+
+```{r}
+bangkok_50k_buffer <- bangkok_dot %>%
+  st_buffer(50000) # base unit in meters, so 10,000m = 10km
+```
+
+Let's see how it looks.
+
+First, let's load a Thailand shape just for a little background.
+
+```{r}
+thailand_gadm <- st_read("./data/gis/gadm41_THA.gpkg", layer = "ADM_ADM_0")
+```
+
+```{r}
+ggplot() + 
+  geom_sf(data=thailand_gadm) + 
+  geom_sf(data=bangkok_50k_buffer, color="red") +
+  geom_sf(data=bangkok_dot) 
+```
+
+## Spatial filters
+
+Cool. Now we can use it with our polygons.
+
+```{r}
+bangkok_area_geoms <- global_geoms %>%
+  st_filter(bangkok_50k_buffer)
+```
+
+How does it look?
+
+```{r}
+plot_original <- bangkok_area_geoms %>%
+  ggplot() + 
+  geom_sf() +
+  geom_sf(data=thailand_gadm, fill=NA)
+
+plot_original
+```
+
+What if we want to find all the geometries within a number of SE Asia countries?
+
+We could load them individually.
+
+```{r}
+cambodia_gadm <- st_read("./data/gis/gadm41_KHM.gpkg", layer = "ADM_ADM_0")
+myanmar_gadm <- st_read("./data/gis/gadm41_MMR.gpkg", layer = "ADM_ADM_0")
+laos_gadm <- st_read("./data/gis/gadm41_LAO.gpkg", layer = "ADM_ADM_0")
+
+se_asia_shapes <- bind_rows(cambodia_gadm, myanmar_gadm, laos_gadm, thailand_gadm)
+
+```
+
+If you wanted to get really fancy:
+
+```{r}
+se_asia_shapes <- dir_ls(path="./data/gis/", regexp = "gadm41") %>%
+  map(st_read) %>%
+  bind_rows()
+
+se_asia_shapes %>%
+  ggplot() + geom_sf()
+```
+
+What if we want to assign the country to the geom? We use [st_join]().
+
+```{r}
+se_asia_geoms <- global_geoms %>%
+  st_join(se_asia_shapes, left=FALSE)
+```
+
+Let's plot them.
+
+```{r}
+se_asia_geoms_plot_orig <- ggplot() +
+  geom_sf(data=se_asia_geoms)
+
+se_asia_geoms_plot_orig
+```
+
+You want to transform to a different projection? How about Natural Earth?
+
+```{r}
+se_asia_geoms_3857 <- se_asia_geoms %>%
+  st_transform(3857) 
+
+plot_3857 <- ggplot() + 
+  geom_sf(data=se_asia_geoms_3857) 
+
+plot_3857
+```
+
+```{r}
+library(patchwork)
+
+se_asia_geoms_plot_orig + plot_3857
+```
+
+
+```{sql}
+select * 
+from my_table
+```
+
+
