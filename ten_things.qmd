@@ -327,136 +327,142 @@ p1 + p2
 
 OK. So we've all traditionally worked with desktop applications, such as QGIS or ArcGIS.
 
+We can do all of that stuff in R. 
+
+For vectors, we can use SF. For rasters, we can use stars. 
+
 ```{r}
-# install.packages("sf")
+#install.packages("stars")
+#install.packages("sf")
 ```
 
 ```{r}
+library(stars)
 library(sf)
 ```
 
-First, it's simple to load a shapefile.
+Let's say we have a raster of 2020 population density in Switzerland. We can read it into a stars object like so. 
 
 ```{r}
-global_geoms <- st_read("./data/gis/the_geoms_replacement.gpkg")
+swiss_raster <- read_stars("./data/che_pd_2020_1km.tif")
 ```
 
-This is a massive set of vectors. Let's pull out a few using a buffer.
-
-One simple way is to use [tribble](https://tibble.tidyverse.org/reference/tribble.html), which makes it easy to create a table on the fly. Let's create a dot for Bangkok.
+Let's take a look. 
 
 ```{r}
-bangkok_dot <- tribble(
+ggplot() + 
+  geom_stars(data=swiss_raster)
+```
+
+Let's say we wanted to see just the area around Zurich. 
+
+One simple way is to use [tribble](https://tibble.tidyverse.org/reference/tribble.html), which makes it easy to create an SF point on the fly. Let's create a dot for Zurich.
+
+```{r}
+zurich_dot <- tribble(
   ~site, ~x, ~y,
-  "Bangkok", 100.494167, 13.7525 
+  "Zurich", 8.541111, 47.374444
   ) %>%
   st_as_sf(coords = c("x", "y"), crs = 4326)
+```
+
+Let's make sure the dot is where the dot is supposed to be --- in Zurich. 
+
+```{r}
+ggplot() + 
+  geom_stars(data=swiss_raster) +
+  geom_sf(data=zurich_dot, color="red")
 ```
 
 Now we've got a dot. Let's buffer that dot.
 
 ```{r}
-bangkok_50k_buffer <- bangkok_dot %>%
-  st_buffer(50000) # base unit in meters, so 10,000m = 10km
+zurich_25k_buffer <- zurich_dot %>%
+  st_buffer(25000) # base unit in meters, so 25,000m = 25km
 ```
 
 Let's see how it looks.
 
-First, let's load a Thailand shape just for a little background.
-
-```{r}
-thailand_gadm <- st_read("./data/gis/gadm41_THA.gpkg", layer = "ADM_ADM_0")
-```
-
 ```{r}
 ggplot() + 
-  geom_sf(data=thailand_gadm) + 
-  geom_sf(data=bangkok_50k_buffer, color="red") +
-  geom_sf(data=bangkok_dot) 
+  geom_stars(data=swiss_raster) +
+  geom_sf(data=zurich_dot, color="red") +
+  geom_sf(data=zurich_25k_buffer, fill=NA, color="red")
 ```
 
-## Spatial filters
-
-Cool. Now we can use it with our polygons.
+Now let's crop the raster by our buffer. 
 
 ```{r}
-bangkok_area_geoms <- global_geoms %>%
-  st_filter(bangkok_50k_buffer)
+swiss_raster_cropped <- swiss_raster %>%
+  st_crop(zurich_25k_buffer) 
 ```
 
 How does it look?
 
 ```{r}
-plot_original <- bangkok_area_geoms %>%
-  ggplot() + 
-  geom_sf() +
-  geom_sf(data=thailand_gadm, fill=NA)
-
-plot_original
+ggplot() + 
+  geom_stars(data=swiss_raster_cropped)
 ```
 
-What if we want to find all the geometries within a number of SE Asia countries?
+I won't go too far down the rabbit hole, but you can use [tidyverse methods](https://r-spatial.github.io/stars/articles/stars3.html) with stars objects. 
 
-We could load them individually.
+Here we rename the attribute to pop_density_20, then we create a new band with a yes or no whether it's high density. Then we select just our newly created high_density band. 
 
 ```{r}
-cambodia_gadm <- st_read("./data/gis/gadm41_KHM.gpkg", layer = "ADM_ADM_0")
-myanmar_gadm <- st_read("./data/gis/gadm41_MMR.gpkg", layer = "ADM_ADM_0")
-laos_gadm <- st_read("./data/gis/gadm41_LAO.gpkg", layer = "ADM_ADM_0")
-
-se_asia_shapes <- bind_rows(cambodia_gadm, myanmar_gadm, laos_gadm, thailand_gadm)
-
+new_band_example <- swiss_raster_cropped %>%
+  rename(pop_density_20 = 1) %>%
+  mutate(high_density = if_else(pop_density_20 > 3000, "Yes", "No")) %>%
+  select(high_density) 
 ```
 
-If you wanted to get really fancy:
+How does it look?
 
 ```{r}
-se_asia_shapes <- dir_ls(path="./data/gis/", regexp = "gadm41") %>%
-  map(st_read) %>%
-  bind_rows()
-
-se_asia_shapes %>%
-  ggplot() + geom_sf()
+ggplot() + 
+  geom_stars(data=new_band_example)
 ```
 
-What if we want to assign the country to the geom? We use [st_join]().
+What if you're like me and prefer to work in vectors?
+
+Let's return to our swiss_raster_cropped stars object. 
+
+It takes just one line of code to turn this raster into an SF vector object. 
 
 ```{r}
-se_asia_geoms <- global_geoms %>%
-  st_join(se_asia_shapes, left=FALSE)
+swiss_raster_cropped_sf <- swiss_raster_cropped %>%
+  st_as_sf()
 ```
 
-Let's plot them.
+Now let's take a look. 
 
 ```{r}
-se_asia_geoms_plot_orig <- ggplot() +
-  geom_sf(data=se_asia_geoms)
-
-se_asia_geoms_plot_orig
+ggplot() + 
+  geom_sf(data=swiss_raster_cropped_sf)
 ```
 
-You want to transform to a different projection? How about Natural Earth?
+
+What about a spatial filter?
+
+Let's create another smaller buffer as an example. 
 
 ```{r}
-se_asia_geoms_3857 <- se_asia_geoms %>%
-  st_transform(3857) 
-
-plot_3857 <- ggplot() + 
-  geom_sf(data=se_asia_geoms_3857) 
-
-plot_3857
+zurich_10k_buffer <- zurich_dot %>%
+  st_buffer(10000) 
 ```
+
+Now we can use st_filter. 
 
 ```{r}
-library(patchwork)
-
-se_asia_geoms_plot_orig + plot_3857
+smaller_zurich_area <- swiss_raster_cropped_sf %>%
+  st_filter(zurich_10k_buffer)
 ```
 
+How does it look?
 
-```{sql}
-select * 
-from my_table
+```{r}
+ggplot() + 
+  geom_sf(data=swiss_raster_cropped_sf) +
+  geom_sf(data=smaller_zurich_area, color="red")
 ```
 
 
