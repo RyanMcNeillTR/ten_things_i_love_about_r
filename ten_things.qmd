@@ -1,6 +1,8 @@
 ---
 title: "Ten Things I Love About R"
-format: gfm
+format: 
+  gfm: 
+    toc: true
 editor: visual
 ---
 

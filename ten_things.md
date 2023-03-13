@@ -1,6 +1,19 @@
 Ten Things I Love About R
 ================
 
+- <a href="#the-tidyverse" id="toc-the-tidyverse">The tidyverse</a>
+- <a href="#import-data" id="toc-import-data">Import Data</a>
+- <a href="#fs" id="toc-fs">FS</a>
+- <a href="#clean-column-names" id="toc-clean-column-names">Clean column
+  names</a>
+- <a href="#work-with-dates" id="toc-work-with-dates">Work with dates</a>
+- <a href="#interact-with-databases"
+  id="toc-interact-with-databases">Interact with databases</a>
+- <a href="#wrangling-data" id="toc-wrangling-data">Wrangling data</a>
+- <a href="#pivot-data" id="toc-pivot-data">Pivot Data</a>
+- <a href="#easy-charting" id="toc-easy-charting">Easy charting</a>
+- <a href="#do-gis-stuff" id="toc-do-gis-stuff">Do GIS stuff</a>
+
 # The tidyverse
 
 When I first started using R, there was no
