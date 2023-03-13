@@ -1,6 +1,6 @@
 ---
 title: "Ten Things I Love About R"
-format: html
+format: gfm
 editor: visual
 ---
 
@@ -47,7 +47,9 @@ For example, if I need to get data into Postgres or SQL Server, I'll use R as an
 I can use the tidyverse's [readr](https://readr.tidyverse.org).
 
 ```{r}
-single_dataset <- read_csv("./data/importing/pop_area_by_country_by_quintile_2002_1_2023_02_17_20_40_48.csv")
+single_dataset <- read_csv("./data/importing/abw.csv")
+
+single_dataset
 ```
 
 You'll see there are other [readr functions](https://readr.tidyverse.org/reference/index.html) to help you import data.
@@ -57,7 +59,7 @@ Sidenote: Have a SAS, SPSS or Stata dataset? You can import it with [haven](http
 One thing I like to do is import everything as character, then later convert to appropriate data types. I can do that easily with [read_csv](https://readr.tidyverse.org/reference/read_delim.html).
 
 ```{r}
-single_dataset <- read_csv("./data/importing/pop_area_by_country_by_quintile_2002_1_2023_02_17_20_40_48.csv", col_types = cols(.default = "c"))
+single_dataset <- read_csv("./data/importing/abw.csv", col_types = cols(.default = "c"))
 ```
 
 # FS
@@ -80,15 +82,13 @@ Let's initialize fs.
 library(fs)
 ```
 
-What's in our directory?
+What's in our directory? Annoyingly, there's a different file for every country. What to do?
 
 ```{r}
 dir_ls(path="./data/importing")
 ```
 
-Look at all those files? Sucky.
-
-But fs makes it easy.
+fs makes it easy.
 
 ```{r}
 imported_data_collection <- dir_ls(path="./data/importing") %>%
@@ -103,7 +103,7 @@ And, take note how it also includes the filename from which that data originated
 
 I use a single function from the [janitor package](https://sfirke.github.io/janitor/index.html). More precisely: I use [clean_names](https://sfirke.github.io/janitor/reference/clean_names.html) constantly.
 
-The data we just imported gives us a perfect use case. Here are our ugly column names.
+The data we just imported gives us a perfect use case. Here are our ugly column names. Column names starting with numbers? Unacceptable. 
 
 ```{r}
 colnames(imported_data_collection)
@@ -223,7 +223,7 @@ You can do it a couple ways.
 
 ```{r}
 # first way
-showing_off <- dbGetQuery(con, "select country, pop from my_table_name")
+showing_off <- dbGetQuery(con, "select indicator, x2000 from my_table_name")
 
 showing_off
 ```
@@ -231,7 +231,7 @@ showing_off
 Second way.
 
 ```{r}
-results <- dbSendQuery(con, "select country, pop from my_table_name")
+results <- dbSendQuery(con, "select indicator, x2000 from my_table_name")
 dbFetch(results, n=100) 
 ```
 
@@ -253,23 +253,25 @@ my_dbplyr_connection
 
 To me, one of the real time-saving features of dbplyr is how it makes select statements much easier.
 
-Say you just want to extract country, gid_0, pop and hr_area_m2 --- you can use [tidyselectors](https://tidyselect.r-lib.org/reference/language.html) that make it easier than writing a traditional select statement in SQL.
+Say you just want to extract the total population for each year--- you can use [tidyselectors](https://tidyselect.r-lib.org/reference/language.html) that make it easier than writing a traditional select statement in SQL.
 
 ```{r}
 my_dbplyr_connection %>%
-  select(rowid, gid_0, starts_with("defo_")) # this says: give me all the columns between country and pop
+  filter(indicator=="SP.POP.TOTL") %>%
+  select(file, starts_with("x2")) # saves me writing out all those field names in a select statement
 ```
 
 # Wrangling data
 
-OK. One thing we need to add is the year of the data, as well as the quintile. We can extract those from the file name using [str_extract](https://stringr.tidyverse.org/reference/str_extract.html) and [regular expressions](https://cran.r-project.org/web/packages/stringr/vignettes/regular-expressions.html).
+OK. One thing we need to add is extract the ISO3 code of the country buried in the filename. We can extract those from the file name using [str_extract](https://stringr.tidyverse.org/reference/str_extract.html) and [regular expressions](https://cran.r-project.org/web/packages/stringr/vignettes/regular-expressions.html).
 
 ```{r}
-my_pattern <- "pop_area_by_country_by_quintile_(20\\d\\d)_(\\d)_"
+my_pattern <- "./data/importing/(\\D\\D\\D).csv"
 
 imported_data_collection_fixed_2 <- imported_data_collection_fixed %>%
-  mutate(the_year = as.integer(str_extract(file, my_pattern, group=1)),
-         the_quintile = as.integer(str_extract(file, my_pattern, group=2)))
+  filter(indicator=="SP.POP.TOTL") %>%
+  mutate(country_code = str_extract(file, my_pattern, group=1)) %>%
+  select(file, country_code, starts_with("x2"))
 
 imported_data_collection_fixed_2
 ```
@@ -278,50 +280,52 @@ Cool huh?
 
 # Pivot Data
 
+OK. So remember how we imported all that data as character? We need to convert all those pop fields to integers.
+
+We could write a mutate statement to do each of the years individually. Or we could pivot the data, making a wide dataset into a long one.
+
 ```{r}
 imported_data_collection_fixed_2 %>%
-  mutate(pop = as.numeric(pop),
-         hr_area_m2 = as.numeric(hr_area_m2)) %>%
-  group_by(country, the_year) %>%
-  summarise(tot_pop = sum(pop),
-            tot_area = sum(hr_area_m2)) %>%
-  pivot_wider(names_from = the_year, values_from = c("tot_pop", "tot_area"))
+  pivot_longer(cols=starts_with("x"), names_to = "the_year", values_to = "pop_tot")
 ```
+
+So now we can just convert that one field to numeric, then pivot it back. 
+
+```{r}
+imported_data_collection_fixed_3 <- imported_data_collection_fixed_2 %>%
+  pivot_longer(cols=starts_with("x"), names_to = "the_year", values_to = "pop_tot") %>%
+  mutate(pop_tot_num = as.numeric(pop_tot)) %>%
+  select(!pop_tot) %>% # drop the old character field
+  pivot_wider(names_from = the_year, values_from = pop_tot_num)
+
+imported_data_collection_fixed_3
+```
+
+Voila!
 
 # Easy charting
 
+So let's take our last dataset and do some charting. How about we chart China and India's population?
+
+We're going to filter for those two countries, then pivot longer because it's a time series, then we're going to turn our year field name into an integer. 
+
 ```{r}
-ready_to_chart <- imported_data_collection_fixed_2 %>%
-  mutate(pop = as.numeric(pop),
-         hr_area_m2 = as.numeric(hr_area_m2)) %>%
-  group_by(country, the_year) %>%
-  summarise(tot_pop = sum(pop),
-            tot_area = sum(hr_area_m2)) %>%
-  filter(country %in% c("Brazil", "China"))
+ready_to_chart <- imported_data_collection_fixed_3 %>%
+  filter(country_code %in% c("IND", "CHN")) %>%
+  pivot_longer(cols = starts_with("x"), names_to = "the_year", values_to = "pop") %>%
+  mutate(the_year = as.integer(str_remove(the_year, "x")))
 
 ready_to_chart
 ```
 
 ```{r}
-p1 <- ggplot(data=ready_to_chart, aes(x=the_year, y=tot_pop, group=country, color=country)) + 
-  geom_line() 
+p1 <- ggplot(data=ready_to_chart, aes(x=the_year, y=pop, group=country_code, color=country_code)) + 
+  geom_line() +
+  geom_point()
 
 p1
 ```
 
-```{r}
-p2 <- ggplot(data=ready_to_chart, aes(x=the_year, y=tot_area, group=country, color=country)) + 
-  geom_line() 
-
-p2
-```
-
-Easily put them side by side.
-
-```{r}
-library(patchwork)
-p1 + p2
-```
 
 # Do GIS stuff
 
