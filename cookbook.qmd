@@ -1,5 +1,5 @@
 ---
-title: "More Cool Things"
+title: "Cookbook"
 format: gfm
 editor: visual
 ---
@@ -26,7 +26,7 @@ options(scipen=999)
 
 ## Lots of buffers
 
-Here's a fun way to make lots of buffer lots of distances at once. 
+Here's a nice way to make lots of buffers at varying distances at once. 
 
 Say you have a point. 
 
