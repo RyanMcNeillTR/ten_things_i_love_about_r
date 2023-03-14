@@ -4,6 +4,15 @@ format: gfm
 editor: visual
 ---
 
+# Housekeeping
+
+```{r}
+library(tidyverse)
+library(sf)
+library(stars)
+```
+
+
 # Quick Tips
 
 Turn off scientific notation. 
