@@ -17,6 +17,8 @@ The code below installs the packages you need. To use it, just remove the # and 
 #install.packages("RPostgres")
 #install.packages("stars")
 #install.packages("sf")
+#install.packages("countrycodes")
+#install.packages("rnaturalearth")
 ```
 
 
@@ -279,6 +281,32 @@ imported_data_collection_fixed_2
 
 Cool huh?
 
+### Country Codes
+
+OK, this is technically makes this list 11 Things I Love About R, but it also falls within within wrangling data. There's a package called [countrycode](https://vincentarelbundock.github.io/countrycode/) that is amazingly helpful. 
+
+```{r}
+library(countrycode)
+```
+
+First, let's use it to get the names of the countries. 
+
+Because this is a World Bank dataset, we'll convert WB codes to ISO3C. 
+
+We'll also add the continent. 
+
+```{r}
+imported_data_collection_fixed_3 <- imported_data_collection_fixed_2 %>%
+  mutate(country_name = countrycode(country_code, "wb", "country.name"),
+         country_code_iso3 = countrycode(country_code, "wb", "iso3c"),
+         continent = countrycode(country_code, "wb", "continent")) %>%
+  drop_na() %>%
+  select(file, starts_with("country"), continent, starts_with("x"))
+
+imported_data_collection_fixed_3
+```
+
+
 ## Pivot Data
 
 OK. So remember how we imported all that data as character? We need to convert all those pop fields to integers.
@@ -286,14 +314,14 @@ OK. So remember how we imported all that data as character? We need to convert a
 We could write a mutate statement to do each of the years individually. Or we could pivot the data, making a wide dataset into a long one.
 
 ```{r}
-imported_data_collection_fixed_2 %>%
+imported_data_collection_fixed_3 %>%
   pivot_longer(cols=starts_with("x"), names_to = "the_year", values_to = "pop_tot")
 ```
 
 So now we can just convert that one field to numeric, then pivot it back. 
 
 ```{r}
-imported_data_collection_fixed_3 <- imported_data_collection_fixed_2 %>%
+imported_data_collection_fixed_3 <- imported_data_collection_fixed_3 %>%
   pivot_longer(cols=starts_with("x"), names_to = "the_year", values_to = "pop_tot") %>%
   mutate(pop_tot_num = as.numeric(pop_tot)) %>%
   select(!pop_tot) %>% # drop the old character field
@@ -340,6 +368,20 @@ For vectors, we can use SF. For rasters, we can use stars.
 library(stars)
 library(sf)
 ```
+
+Let's do the most basic of tasks: Make a thematic map. 
+
+```{r}
+ready_to_map <- ne_countries(type="countries", returnclass = "sf") %>% # this brings in the Natural Earth admin boundaries
+  left_join(imported_data_collection_fixed_3, by=c("adm0_a3" = "country_code_iso3")) 
+
+library(rnaturalearth)
+
+ggplot() +
+  geom_sf(data=ready_to_map, aes(fill=x2017)) +
+  scale_fill_viridis_c()
+```
+
 
 Let's say we have a raster of 2020 population density in Switzerland. We can read it into a stars object like so. 
 
