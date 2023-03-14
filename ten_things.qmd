@@ -80,7 +80,7 @@ single_dataset <- read_csv("./data/importing/abw.csv", col_types = cols(.default
 
 OK. Say you have a directory of files. You want to import them all into a single dataset.
 
-There's a tidy-friendly package called [fs](https://fs.r-lib.org) for working with file systems.
+There's a tidy-friendly package called [fs](https://fs.r-lib.org) for working with file systems. FS is great because it's usable across multiple operating systems. The same code for grabbing files in Macs works for Windows. 
 
 Let's initialize fs.
 
@@ -372,10 +372,10 @@ library(sf)
 Let's do the most basic of tasks: Make a thematic map. 
 
 ```{r}
+library(rnaturalearth)
+
 ready_to_map <- ne_countries(type="countries", returnclass = "sf") %>% # this brings in the Natural Earth admin boundaries
   left_join(imported_data_collection_fixed_3, by=c("adm0_a3" = "country_code_iso3")) 
-
-library(rnaturalearth)
 
 ggplot() +
   geom_sf(data=ready_to_map, aes(fill=x2017)) +

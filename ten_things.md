@@ -12,6 +12,7 @@ Ten Things I Love About R
   - <a href="#interact-with-databases"
     id="toc-interact-with-databases">Interact with databases</a>
   - <a href="#wrangling-data" id="toc-wrangling-data">Wrangling data</a>
+    - <a href="#country-codes" id="toc-country-codes">Country Codes</a>
   - <a href="#pivot-data" id="toc-pivot-data">Pivot Data</a>
   - <a href="#easy-charting" id="toc-easy-charting">Easy charting</a>
   - <a href="#do-gis-stuff" id="toc-do-gis-stuff">Do GIS stuff</a>
@@ -28,6 +29,8 @@ the \# and hit run.
 #install.packages("RPostgres")
 #install.packages("stars")
 #install.packages("sf")
+#install.packages("countrycodes")
+#install.packages("rnaturalearth")
 ```
 
 # The Ten Things
@@ -139,7 +142,9 @@ OK. Say you have a directory of files. You want to import them all into
 a single dataset.
 
 There’s a tidy-friendly package called [fs](https://fs.r-lib.org) for
-working with file systems.
+working with file systems. FS is great because it’s usable across
+multiple operating systems. The same code for grabbing files in Macs
+works for Windows.
 
 Let’s initialize fs.
 
@@ -665,6 +670,63 @@ imported_data_collection_fixed_2
 
 Cool huh?
 
+### Country Codes
+
+OK, this is technically makes this list 11 Things I Love About R, but it
+also falls within within wrangling data. There’s a package called
+[countrycode](https://vincentarelbundock.github.io/countrycode/) that is
+amazingly helpful.
+
+``` r
+library(countrycode)
+```
+
+First, let’s use it to get the names of the countries.
+
+Because this is a World Bank dataset, we’ll convert WB codes to ISO3C.
+
+We’ll also add the continent.
+
+``` r
+imported_data_collection_fixed_3 <- imported_data_collection_fixed_2 %>%
+  mutate(country_name = countrycode(country_code, "wb", "country.name"),
+         country_code_iso3 = countrycode(country_code, "wb", "iso3c"),
+         continent = countrycode(country_code, "wb", "continent")) %>%
+  drop_na() %>%
+  select(file, starts_with("country"), continent, starts_with("x"))
+```
+
+    Warning: There were 3 warnings in `mutate()`.
+    The first warning was:
+    ℹ In argument: `country_name = countrycode(country_code, "wb",
+      "country.name")`.
+    Caused by warning in `countrycode_convert()`:
+    ! Some values were not matched unambiguously: AFE, AFW, ARB, CEB, CSS, EAP, EAR, EAS, ECA, ECS, EMU, EUU, FCS, HIC, HPC, IBD, IBT, IDA, IDB, IDX, INX, LAC, LCN, LDC, LIC, LMC, LMY, LTE, MEA, MIC, MNA, NAC, OED, OSS, PRE, PSS, PST, SAS, SSA, SSF, SST, TEA, TEC, TLA, TMN, TSA, TSS, UMC, WLD
+    ℹ Run `dplyr::last_dplyr_warnings()` to see the 2 remaining warnings.
+
+``` r
+imported_data_collection_fixed_3
+```
+
+    # A tibble: 215 × 23
+       file      count…¹ count…² count…³ conti…⁴ x2000 x2001 x2002 x2003 x2004 x2005
+       <chr>     <chr>   <chr>   <chr>   <chr>   <chr> <chr> <chr> <chr> <chr> <chr>
+     1 ./data/i… ABW     Aruba   ABW     Americ… 89101 90691 91781 92701 93540 94483
+     2 ./data/i… AFG     Afghan… AFG     Asia    1954… 1968… 2100… 2264… 2355… 2441…
+     3 ./data/i… AGO     Angola  AGO     Africa  1639… 1694… 1751… 1812… 1877… 1945…
+     4 ./data/i… ALB     Albania ALB     Europe  3089… 3060… 3051… 3039… 3026… 3011…
+     5 ./data/i… AND     Andorra AND     Europe  66097 67820 70849 73907 76933 79826
+     6 ./data/i… ARE     United… ARE     Asia    3275… 3454… 3633… 3813… 3993… 4280…
+     7 ./data/i… ARG     Argent… ARG     Americ… 3707… 3748… 3788… 3827… 3866… 3907…
+     8 ./data/i… ARM     Armenia ARM     Asia    3168… 3133… 3105… 3084… 3065… 3047…
+     9 ./data/i… ASM     Americ… ASM     Oceania 58230 58324 58177 57941 57626 57254
+    10 ./data/i… ATG     Antigu… ATG     Americ… 75055 76215 77195 78075 78941 79869
+    # … with 205 more rows, 12 more variables: x2006 <chr>, x2007 <chr>,
+    #   x2008 <chr>, x2009 <chr>, x2010 <chr>, x2011 <chr>, x2012 <chr>,
+    #   x2013 <chr>, x2014 <chr>, x2015 <chr>, x2016 <chr>, x2017 <chr>, and
+    #   abbreviated variable names ¹​country_code, ²​country_name,
+    #   ³​country_code_iso3, ⁴​continent
+
 ## Pivot Data
 
 OK. So remember how we imported all that data as character? We need to
@@ -674,30 +736,31 @@ We could write a mutate statement to do each of the years individually.
 Or we could pivot the data, making a wide dataset into a long one.
 
 ``` r
-imported_data_collection_fixed_2 %>%
+imported_data_collection_fixed_3 %>%
   pivot_longer(cols=starts_with("x"), names_to = "the_year", values_to = "pop_tot")
 ```
 
-    # A tibble: 4,788 × 4
-       file                     country_code the_year pop_tot
-       <chr>                    <chr>        <chr>    <chr>  
-     1 ./data/importing/ABW.csv ABW          x2000    89101  
-     2 ./data/importing/ABW.csv ABW          x2001    90691  
-     3 ./data/importing/ABW.csv ABW          x2002    91781  
-     4 ./data/importing/ABW.csv ABW          x2003    92701  
-     5 ./data/importing/ABW.csv ABW          x2004    93540  
-     6 ./data/importing/ABW.csv ABW          x2005    94483  
-     7 ./data/importing/ABW.csv ABW          x2006    95606  
-     8 ./data/importing/ABW.csv ABW          x2007    96787  
-     9 ./data/importing/ABW.csv ABW          x2008    97996  
-    10 ./data/importing/ABW.csv ABW          x2009    99212  
-    # … with 4,778 more rows
+    # A tibble: 3,870 × 7
+       file                     country_code count…¹ count…² conti…³ the_y…⁴ pop_tot
+       <chr>                    <chr>        <chr>   <chr>   <chr>   <chr>   <chr>  
+     1 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2000   89101  
+     2 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2001   90691  
+     3 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2002   91781  
+     4 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2003   92701  
+     5 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2004   93540  
+     6 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2005   94483  
+     7 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2006   95606  
+     8 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2007   96787  
+     9 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2008   97996  
+    10 ./data/importing/ABW.csv ABW          Aruba   ABW     Americ… x2009   99212  
+    # … with 3,860 more rows, and abbreviated variable names ¹​country_name,
+    #   ²​country_code_iso3, ³​continent, ⁴​the_year
 
 So now we can just convert that one field to numeric, then pivot it
 back.
 
 ``` r
-imported_data_collection_fixed_3 <- imported_data_collection_fixed_2 %>%
+imported_data_collection_fixed_3 <- imported_data_collection_fixed_3 %>%
   pivot_longer(cols=starts_with("x"), names_to = "the_year", values_to = "pop_tot") %>%
   mutate(pop_tot_num = as.numeric(pop_tot)) %>%
   select(!pop_tot) %>% # drop the old character field
@@ -706,22 +769,24 @@ imported_data_collection_fixed_3 <- imported_data_collection_fixed_2 %>%
 imported_data_collection_fixed_3
 ```
 
-    # A tibble: 266 × 20
-       file   count…¹  x2000  x2001  x2002  x2003  x2004  x2005  x2006  x2007  x2008
-       <chr>  <chr>    <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>
-     1 ./dat… ABW     8.91e4 9.07e4 9.18e4 9.27e4 9.35e4 9.45e4 9.56e4 9.68e4 9.80e4
-     2 ./dat… AFE     4.02e8 4.12e8 4.23e8 4.34e8 4.45e8 4.57e8 4.70e8 4.82e8 4.96e8
-     3 ./dat… AFG     1.95e7 1.97e7 2.10e7 2.26e7 2.36e7 2.44e7 2.54e7 2.59e7 2.64e7
-     4 ./dat… AFW     2.70e8 2.77e8 2.85e8 2.93e8 3.01e8 3.10e8 3.19e8 3.28e8 3.37e8
-     5 ./dat… AGO     1.64e7 1.69e7 1.75e7 1.81e7 1.88e7 1.95e7 2.02e7 2.09e7 2.17e7
-     6 ./dat… ALB     3.09e6 3.06e6 3.05e6 3.04e6 3.03e6 3.01e6 2.99e6 2.97e6 2.95e6
-     7 ./dat… AND     6.61e4 6.78e4 7.08e4 7.39e4 7.69e4 7.98e4 8.02e4 7.82e4 7.61e4
-     8 ./dat… ARB     2.87e8 2.94e8 3.00e8 3.07e8 3.13e8 3.21e8 3.29e8 3.37e8 3.47e8
-     9 ./dat… ARE     3.28e6 3.45e6 3.63e6 3.81e6 3.99e6 4.28e6 4.90e6 5.87e6 6.99e6
-    10 ./dat… ARG     3.71e7 3.75e7 3.79e7 3.83e7 3.87e7 3.91e7 3.95e7 3.99e7 4.03e7
-    # … with 256 more rows, 9 more variables: x2009 <dbl>, x2010 <dbl>,
-    #   x2011 <dbl>, x2012 <dbl>, x2013 <dbl>, x2014 <dbl>, x2015 <dbl>,
-    #   x2016 <dbl>, x2017 <dbl>, and abbreviated variable name ¹​country_code
+    # A tibble: 215 × 23
+       file       count…¹ count…² count…³ conti…⁴  x2000  x2001  x2002  x2003  x2004
+       <chr>      <chr>   <chr>   <chr>   <chr>    <dbl>  <dbl>  <dbl>  <dbl>  <dbl>
+     1 ./data/im… ABW     Aruba   ABW     Americ… 8.91e4 9.07e4 9.18e4 9.27e4 9.35e4
+     2 ./data/im… AFG     Afghan… AFG     Asia    1.95e7 1.97e7 2.10e7 2.26e7 2.36e7
+     3 ./data/im… AGO     Angola  AGO     Africa  1.64e7 1.69e7 1.75e7 1.81e7 1.88e7
+     4 ./data/im… ALB     Albania ALB     Europe  3.09e6 3.06e6 3.05e6 3.04e6 3.03e6
+     5 ./data/im… AND     Andorra AND     Europe  6.61e4 6.78e4 7.08e4 7.39e4 7.69e4
+     6 ./data/im… ARE     United… ARE     Asia    3.28e6 3.45e6 3.63e6 3.81e6 3.99e6
+     7 ./data/im… ARG     Argent… ARG     Americ… 3.71e7 3.75e7 3.79e7 3.83e7 3.87e7
+     8 ./data/im… ARM     Armenia ARM     Asia    3.17e6 3.13e6 3.11e6 3.08e6 3.07e6
+     9 ./data/im… ASM     Americ… ASM     Oceania 5.82e4 5.83e4 5.82e4 5.79e4 5.76e4
+    10 ./data/im… ATG     Antigu… ATG     Americ… 7.51e4 7.62e4 7.72e4 7.81e4 7.89e4
+    # … with 205 more rows, 13 more variables: x2005 <dbl>, x2006 <dbl>,
+    #   x2007 <dbl>, x2008 <dbl>, x2009 <dbl>, x2010 <dbl>, x2011 <dbl>,
+    #   x2012 <dbl>, x2013 <dbl>, x2014 <dbl>, x2015 <dbl>, x2016 <dbl>,
+    #   x2017 <dbl>, and abbreviated variable names ¹​country_code, ²​country_name,
+    #   ³​country_code_iso3, ⁴​continent
 
 Voila!
 
@@ -743,20 +808,21 @@ ready_to_chart <- imported_data_collection_fixed_3 %>%
 ready_to_chart
 ```
 
-    # A tibble: 36 × 4
-       file                     country_code the_year        pop
-       <chr>                    <chr>           <int>      <dbl>
-     1 ./data/importing/CHN.csv CHN              2000 1262645000
-     2 ./data/importing/CHN.csv CHN              2001 1271850000
-     3 ./data/importing/CHN.csv CHN              2002 1280400000
-     4 ./data/importing/CHN.csv CHN              2003 1288400000
-     5 ./data/importing/CHN.csv CHN              2004 1296075000
-     6 ./data/importing/CHN.csv CHN              2005 1303720000
-     7 ./data/importing/CHN.csv CHN              2006 1311020000
-     8 ./data/importing/CHN.csv CHN              2007 1317885000
-     9 ./data/importing/CHN.csv CHN              2008 1324655000
-    10 ./data/importing/CHN.csv CHN              2009 1331260000
-    # … with 26 more rows
+    # A tibble: 36 × 7
+       file                     country_code countr…¹ count…² conti…³ the_y…⁴    pop
+       <chr>                    <chr>        <chr>    <chr>   <chr>     <int>  <dbl>
+     1 ./data/importing/CHN.csv CHN          China    CHN     Asia       2000 1.26e9
+     2 ./data/importing/CHN.csv CHN          China    CHN     Asia       2001 1.27e9
+     3 ./data/importing/CHN.csv CHN          China    CHN     Asia       2002 1.28e9
+     4 ./data/importing/CHN.csv CHN          China    CHN     Asia       2003 1.29e9
+     5 ./data/importing/CHN.csv CHN          China    CHN     Asia       2004 1.30e9
+     6 ./data/importing/CHN.csv CHN          China    CHN     Asia       2005 1.30e9
+     7 ./data/importing/CHN.csv CHN          China    CHN     Asia       2006 1.31e9
+     8 ./data/importing/CHN.csv CHN          China    CHN     Asia       2007 1.32e9
+     9 ./data/importing/CHN.csv CHN          China    CHN     Asia       2008 1.32e9
+    10 ./data/importing/CHN.csv CHN          China    CHN     Asia       2009 1.33e9
+    # … with 26 more rows, and abbreviated variable names ¹​country_name,
+    #   ²​country_code_iso3, ³​continent, ⁴​the_year
 
 ``` r
 p1 <- ggplot(data=ready_to_chart, aes(x=the_year, y=pop, group=country_code, color=country_code)) + 
@@ -766,7 +832,7 @@ p1 <- ggplot(data=ready_to_chart, aes(x=the_year, y=pop, group=country_code, col
 p1
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-27-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-29-1.png)
 
 ## Do GIS stuff
 
@@ -791,6 +857,21 @@ library(stars)
 library(sf)
 ```
 
+Let’s do the most basic of tasks: Make a thematic map.
+
+``` r
+library(rnaturalearth)
+
+ready_to_map <- ne_countries(type="countries", returnclass = "sf") %>% # this brings in the Natural Earth admin boundaries
+  left_join(imported_data_collection_fixed_3, by=c("adm0_a3" = "country_code_iso3")) 
+
+ggplot() +
+  geom_sf(data=ready_to_map, aes(fill=x2017)) +
+  scale_fill_viridis_c()
+```
+
+![](ten_things_files/figure-commonmark/unnamed-chunk-31-1.png)
+
 Let’s say we have a raster of 2020 population density in Switzerland. We
 can read it into a stars object like so.
 
@@ -805,7 +886,7 @@ ggplot() +
   geom_stars(data=swiss_raster)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-30-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-33-1.png)
 
 Let’s say we wanted to see just the area around Zurich.
 
@@ -830,7 +911,7 @@ ggplot() +
   geom_sf(data=zurich_dot, color="red")
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-32-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-35-1.png)
 
 Now we’ve got a dot. Let’s buffer that dot.
 
@@ -848,7 +929,7 @@ ggplot() +
   geom_sf(data=zurich_25k_buffer, fill=NA, color="red")
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-34-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-37-1.png)
 
 Now let’s crop the raster by our buffer.
 
@@ -864,7 +945,7 @@ ggplot() +
   geom_stars(data=swiss_raster_cropped)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-36-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-39-1.png)
 
 I won’t go too far down the rabbit hole, but you can use [tidyverse
 methods](https://r-spatial.github.io/stars/articles/stars3.html) with
@@ -888,7 +969,7 @@ ggplot() +
   geom_stars(data=new_band_example)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-38-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-41-1.png)
 
 What if you’re like me and prefer to work in vectors?
 
@@ -909,7 +990,7 @@ ggplot() +
   geom_sf(data=swiss_raster_cropped_sf)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-40-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-43-1.png)
 
 What about a spatial filter?
 
@@ -935,4 +1016,4 @@ ggplot() +
   geom_sf(data=smaller_zurich_area, color="red")
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-43-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-46-1.png)

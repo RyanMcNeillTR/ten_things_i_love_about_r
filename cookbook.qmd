@@ -1,0 +1,113 @@
+---
+title: "More Cool Things"
+format: gfm
+editor: visual
+---
+
+# Quick Tips
+
+Turn off scientific notation. 
+
+```{r}
+options(scipen=999)
+```
+
+
+# GIS stuff
+
+## Lots of buffers
+
+Here's a fun way to make lots of buffer lots of distances at once. 
+
+Say you have a point. 
+
+```{r}
+zurich_dot <- tribble(
+  ~site, ~x, ~y,
+  "Zurich", 8.541111, 47.374444
+  ) %>%
+  st_as_sf(coords = c("x", "y"), crs = 4326)
+```
+
+And you want to make buffers for every 10km. 
+
+Step by Step. First we use the full_seq function to create a vector of values from 10 to 100 by 10. 
+
+We turn it into a tibble. 
+
+We rename the field. 
+
+```{r}
+full_seq(c(10000, 100000), 10000) %>% # this function create
+  enframe() %>% 
+  rename(distance=value) 
+```
+
+So now imagine if we had a field to contain the buffer shape. 
+
+```{r}
+lotsa_buffers <- full_seq(c(10000, 100000), 10000) %>% 
+  enframe() %>% 
+  rename(distance=value) %>%
+  mutate(the_buffer = st_buffer(zurich_dot$geometry, dist=distance)) %>%
+  st_as_sf()
+
+lotsa_buffers
+```
+
+Yo that's fancy. 
+
+OK, but now we need to put it to use. 
+
+Let's say we have a raster of 2020 population density in Switzerland. We can read it into a stars object like so. 
+
+```{r}
+swiss_raster <- read_stars("./data/che_pd_2020_1km.tif")
+```
+
+For the purposes of this example, let's convert to vectors. 
+
+```{r}
+swiss_raster_sf <- swiss_raster %>%
+  st_as_sf()
+```
+
+Now let's do a spatial filter for each buffer. 
+
+```{r}
+lotsa_buffers_w_swiss_geoms <- lotsa_buffers %>%
+  mutate(the_geoms = map(st_geometry(the_buffer), function(x) { st_filter(swiss_raster_sf, x) }))
+```
+
+Now let's take a look. 
+
+```{r}
+lotsa_buffers_w_swiss_geoms %>%
+  st_drop_geometry() 
+  
+```
+
+OK so what we need is in the the_geoms. It's a list, which means we can use unnest. Now look at what we have. 
+
+```{r}
+lotsa_buffers_w_swiss_geoms %>%
+  st_drop_geometry() %>% 
+  unnest_wider(the_geoms) %>%
+  select(!geometry) %>% 
+  janitor::clean_names() %>% 
+  unnest_longer(che_pd_2020_1km_tif)
+```
+
+Let's take it even farther. Now you know the population within each buffer. 
+
+```{r}
+lotsa_buffers_w_swiss_geoms %>%
+  st_drop_geometry() %>% 
+  unnest_wider(the_geoms) %>%
+  select(!geometry) %>% 
+  janitor::clean_names() %>% 
+  unnest_longer(che_pd_2020_1km_tif) %>%
+  group_by(distance) %>%
+  summarise(tot_pop = sum(che_pd_2020_1km_tif))
+```
+
