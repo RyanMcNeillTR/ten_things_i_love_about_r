@@ -6,21 +6,32 @@ format:
 editor: visual
 ---
 
-# The tidyverse
+# Housekeeping
+
+The code below installs the packages you need. To use it, just remove the # and hit run. 
+
+```{r}
+#install.packages(tidyverse)
+#install.packages("fs")
+#install.packages("janitor")
+#install.packages("RPostgres")
+#install.packages("stars")
+#install.packages("sf")
+```
+
+
+# The Ten Things
+
+
+## The tidyverse
 
 When I first started using R, there was no [tidyverse](https://www.tidyverse.org). There was just base R, which caused me heartburn.
 
 But the tidyverse changed all that. It makes using R a breeze.
 
-The tidyverse has packages for [reading data](https://readr.tidyverse.org), [manipulating data](https://dplyr.tidyverse.org), [cleaning data](https://tidyr.tidyverse.org) and many other things.
+The tidyverse has packages for [reading data](https://readr.tidyverse.org), [manipulating data](https://dplyr.tidyverse.org), [cleaning data](https://tidyr.tidyverse.org) and many other things. You can [see them here](https://www.tidyverse.org/packages/). 
 
-You can install them with just a simple command.
-
-```{r}
-#install.packages(tidyverse)
-```
-
-Then you can load all the packages at once:
+You can load all the packages at once:
 
 ```{r}
 library(tidyverse)
@@ -36,7 +47,6 @@ For example, [sf](https://r-spatial.github.io/sf/) is a GIS package that adheres
 
 For machine learning/modelling, there's [tidymodels](https://www.tidymodels.org).
 
-One other thing. You'll notice a number of R packages, particularly in the tidyverse, have these
 
 # Import Data
 
@@ -64,19 +74,11 @@ One thing I like to do is import everything as character, then later convert to 
 single_dataset <- read_csv("./data/importing/abw.csv", col_types = cols(.default = "c"))
 ```
 
-# FS
+## FS
 
 OK. Say you have a directory of files. You want to import them all into a single dataset.
 
 There's a tidy-friendly package called [fs](https://fs.r-lib.org) for working with file systems.
-
-You can install it like this:
-
-```{r}
-#install.packages("fs")
-```
-
-Ok back to the topic at hand.
 
 Let's initialize fs.
 
@@ -101,7 +103,7 @@ imported_data_collection
 
 And, take note how it also includes the filename from which that data originated. Useful.
 
-# Clean column names
+## Clean column names
 
 I use a single function from the [janitor package](https://sfirke.github.io/janitor/index.html). More precisely: I use [clean_names](https://sfirke.github.io/janitor/reference/clean_names.html) constantly.
 
@@ -120,7 +122,7 @@ imported_data_collection_fixed <- imported_data_collection %>%
 imported_data_collection_fixed
 ```
 
-# Work with dates
+## Work with dates
 
 ```{r}
 library(nycflights13)
@@ -173,21 +175,17 @@ flights_dt %>%
   mutate(late_departure = difftime(ymd_hms(sched_dep_time), ymd_hms(dep_time), units="secs"))
 ```
 
-# Interact with databases
+## Interact with databases
 
 OK. I've imported my data and I want to send it to Postgres.
 
 [RPostgres](https://rpostgres.r-dbi.org) makes that easy.
 
-First, if needed, install via:
-
-```{r}
-#install.packages("RPostgres")
-```
-
 To connect with the DB, you first need to set up a little connection string to the DB. If you've ever used ODBC, it's kinda similar to that process.
 
 Here's one for a local Postgres install. Notice I used the askForPassword function. That's so I don't encode my username and password when I plan to upload this to Github.
+
+Yes, I know I should use rstudioapi::askForPassword("Database password") in place of user and password. But the Quarto document won't load, so we use this generic connection to a local DB. 
 
 ```{r}
 library(RPostgres)
@@ -195,7 +193,7 @@ library(RPostgres)
 con <- dbConnect(RPostgres::Postgres(),
                  dbname = 'test2', 
                  host = "localhost", 
-                 port = 5432, # or any other port specified by your DBA
+                 port = 5432, 
                  user = "rstudio", 
                  password = "baseball1"
 )
@@ -262,7 +260,7 @@ my_dbplyr_connection %>%
   select(file, starts_with("x2")) # saves me writing out all those field names in a select statement
 ```
 
-# Wrangling data
+## Wrangling data
 
 OK. One thing we need to add is extract the ISO3 code of the country buried in the filename. We can extract those from the file name using [str_extract](https://stringr.tidyverse.org/reference/str_extract.html) and [regular expressions](https://cran.r-project.org/web/packages/stringr/vignettes/regular-expressions.html).
 
@@ -279,7 +277,7 @@ imported_data_collection_fixed_2
 
 Cool huh?
 
-# Pivot Data
+## Pivot Data
 
 OK. So remember how we imported all that data as character? We need to convert all those pop fields to integers.
 
@@ -304,7 +302,7 @@ imported_data_collection_fixed_3
 
 Voila!
 
-# Easy charting
+## Easy charting
 
 So let's take our last dataset and do some charting. How about we chart China and India's population?
 
@@ -328,18 +326,13 @@ p1
 ```
 
 
-# Do GIS stuff
+## Do GIS stuff
 
 OK. So we've all traditionally worked with desktop applications, such as QGIS or ArcGIS.
 
 We can do all of that stuff in R. 
 
 For vectors, we can use SF. For rasters, we can use stars. 
-
-```{r}
-#install.packages("stars")
-#install.packages("sf")
-```
 
 ```{r}
 library(stars)
