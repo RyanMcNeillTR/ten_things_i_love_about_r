@@ -231,7 +231,9 @@ Second way.
 
 ```{r}
 results <- dbSendQuery(con, "select indicator, x2000 from my_table_name")
-dbFetch(results, n=100) 
+results_back <- dbFetch(results, n=10)
+
+results_back
 ```
 
 But wait. There's more. Entering the chat now is [dbplyr](https://dbplyr.tidyverse.org), which uses dplyr verbs to interact with a database. Sweet.

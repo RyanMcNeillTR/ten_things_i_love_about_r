@@ -1,20 +1,38 @@
 Ten Things I Love About R
 ================
 
-- <a href="#the-tidyverse" id="toc-the-tidyverse">The tidyverse</a>
+- <a href="#housekeeping" id="toc-housekeeping">Housekeeping</a>
+- <a href="#the-ten-things" id="toc-the-ten-things">The Ten Things</a>
+  - <a href="#the-tidyverse" id="toc-the-tidyverse">The tidyverse</a>
 - <a href="#import-data" id="toc-import-data">Import Data</a>
-- <a href="#fs" id="toc-fs">FS</a>
-- <a href="#clean-column-names" id="toc-clean-column-names">Clean column
-  names</a>
-- <a href="#work-with-dates" id="toc-work-with-dates">Work with dates</a>
-- <a href="#interact-with-databases"
-  id="toc-interact-with-databases">Interact with databases</a>
-- <a href="#wrangling-data" id="toc-wrangling-data">Wrangling data</a>
-- <a href="#pivot-data" id="toc-pivot-data">Pivot Data</a>
-- <a href="#easy-charting" id="toc-easy-charting">Easy charting</a>
-- <a href="#do-gis-stuff" id="toc-do-gis-stuff">Do GIS stuff</a>
+  - <a href="#fs" id="toc-fs">FS</a>
+  - <a href="#clean-column-names" id="toc-clean-column-names">Clean column
+    names</a>
+  - <a href="#work-with-dates" id="toc-work-with-dates">Work with dates</a>
+  - <a href="#interact-with-databases"
+    id="toc-interact-with-databases">Interact with databases</a>
+  - <a href="#wrangling-data" id="toc-wrangling-data">Wrangling data</a>
+  - <a href="#pivot-data" id="toc-pivot-data">Pivot Data</a>
+  - <a href="#easy-charting" id="toc-easy-charting">Easy charting</a>
+  - <a href="#do-gis-stuff" id="toc-do-gis-stuff">Do GIS stuff</a>
 
-# The tidyverse
+# Housekeeping
+
+The code below installs the packages you need. To use it, just remove
+the \# and hit run.
+
+``` r
+#install.packages(tidyverse)
+#install.packages("fs")
+#install.packages("janitor")
+#install.packages("RPostgres")
+#install.packages("stars")
+#install.packages("sf")
+```
+
+# The Ten Things
+
+## The tidyverse
 
 When I first started using R, there was no
 [tidyverse](https://www.tidyverse.org). There was just base R, which
@@ -25,15 +43,10 @@ But the tidyverse changed all that. It makes using R a breeze.
 The tidyverse has packages for [reading
 data](https://readr.tidyverse.org), [manipulating
 data](https://dplyr.tidyverse.org), [cleaning
-data](https://tidyr.tidyverse.org) and many other things.
+data](https://tidyr.tidyverse.org) and many other things. You can [see
+them here](https://www.tidyverse.org/packages/).
 
-You can install them with just a simple command.
-
-``` r
-#install.packages(tidyverse)
-```
-
-Then you can load all the packages at once:
+You can load all the packages at once:
 
 ``` r
 library(tidyverse)
@@ -64,9 +77,6 @@ spatio-temporal arrays.
 
 For machine learning/modelling, there’s
 [tidymodels](https://www.tidymodels.org).
-
-One other thing. You’ll notice a number of R packages, particularly in
-the tidyverse, have these
 
 # Import Data
 
@@ -123,21 +133,13 @@ convert to appropriate data types. I can do that easily with
 single_dataset <- read_csv("./data/importing/abw.csv", col_types = cols(.default = "c"))
 ```
 
-# FS
+## FS
 
 OK. Say you have a directory of files. You want to import them all into
 a single dataset.
 
 There’s a tidy-friendly package called [fs](https://fs.r-lib.org) for
 working with file systems.
-
-You can install it like this:
-
-``` r
-#install.packages("fs")
-```
-
-Ok back to the topic at hand.
 
 Let’s initialize fs.
 
@@ -271,7 +273,7 @@ imported_data_collection
 And, take note how it also includes the filename from which that data
 originated. Useful.
 
-# Clean column names
+## Clean column names
 
 I use a single function from the [janitor
 package](https://sfirke.github.io/janitor/index.html). More precisely: I
@@ -317,7 +319,7 @@ imported_data_collection_fixed
     #   x2012 <chr>, x2013 <chr>, x2014 <chr>, x2015 <chr>, x2016 <chr>,
     #   x2017 <chr>, and abbreviated variable name ¹​indicator
 
-# Work with dates
+## Work with dates
 
 ``` r
 library(nycflights13)
@@ -439,17 +441,11 @@ flights_dt %>%
     # … with 328,053 more rows, and 4 more variables: arr_time <dttm>,
     #   sched_arr_time <dttm>, air_time <dbl>, late_departure <drtn>
 
-# Interact with databases
+## Interact with databases
 
 OK. I’ve imported my data and I want to send it to Postgres.
 
 [RPostgres](https://rpostgres.r-dbi.org) makes that easy.
-
-First, if needed, install via:
-
-``` r
-#install.packages("RPostgres")
-```
 
 To connect with the DB, you first need to set up a little connection
 string to the DB. If you’ve ever used ODBC, it’s kinda similar to that
@@ -459,13 +455,17 @@ Here’s one for a local Postgres install. Notice I used the
 askForPassword function. That’s so I don’t encode my username and
 password when I plan to upload this to Github.
 
+Yes, I know I should use rstudioapi::askForPassword(“Database password”)
+in place of user and password. But the Quarto document won’t load, so we
+use this generic connection to a local DB.
+
 ``` r
 library(RPostgres)
 
 con <- dbConnect(RPostgres::Postgres(),
                  dbname = 'test2', 
                  host = "localhost", 
-                 port = 5432, # or any other port specified by your DBA
+                 port = 5432, 
                  user = "rstudio", 
                  password = "baseball1"
 )
@@ -531,110 +531,22 @@ Second way.
 
 ``` r
 results <- dbSendQuery(con, "select indicator, x2000 from my_table_name")
-dbFetch(results, n=100) 
+results_back <- dbFetch(results, n=10)
+
+results_back
 ```
 
-          indicator              x2000
-    1   SP.URB.TOTL              41625
-    2   SP.URB.GROW   1.66422212392663
-    3   SP.POP.TOTL              89101
-    4   SP.POP.GROW   2.53923444445246
-    5   SP.URB.TOTL          115551653
-    6   SP.URB.GROW   3.60226233978761
-    7   SP.POP.TOTL          401600588
-    8   SP.POP.GROW    2.5835792421522
-    9   SP.URB.TOTL            4314700
-    10  SP.URB.GROW   1.86137729962901
-    11  SP.POP.TOTL           19542982
-    12  SP.POP.GROW    1.4438030241194
-    13  SP.URB.TOTL           95272890
-    14  SP.URB.GROW   4.14518949083499
-    15  SP.POP.TOTL          269611898
-    16  SP.POP.GROW   2.74959971917366
-    17  SP.URB.TOTL            8211294
-    18  SP.URB.GROW   5.64866955326432
-    19  SP.POP.TOTL           16394062
-    20  SP.POP.GROW   3.24412146672851
-    21  SP.URB.TOTL            1289391
-    22  SP.URB.GROW  0.742478629285177
-    23  SP.POP.TOTL            3089027
-    24  SP.POP.GROW -0.637356833943492
-    25  SP.URB.TOTL              61070
-    26  SP.URB.GROW  0.377327984395132
-    27  SP.POP.TOTL              66097
-    28  SP.POP.GROW  0.670960073758389
-    29  SP.URB.TOTL          152305719
-    30  SP.URB.GROW   2.76137514575139
-    31  SP.POP.TOTL          287065982
-    32  SP.POP.GROW   2.28593431739384
-    33  SP.URB.TOTL            2627996
-    34  SP.URB.GROW   6.11272936104507
-    35  SP.POP.TOTL            3275333
-    36  SP.POP.GROW   5.58038700101525
-    37  SP.URB.TOTL           33045629
-    38  SP.URB.GROW   1.34664689815167
-    39  SP.POP.TOTL           37070774
-    40  SP.POP.GROW   1.13327702210541
-    41  SP.URB.TOTL            2048957
-    42  SP.URB.GROW  -1.61037490478258
-    43  SP.POP.TOTL            3168523
-    44  SP.POP.GROW  -1.17678628879226
-    45  SP.URB.TOTL              51584
-    46  SP.URB.GROW    1.6142305917451
-    47  SP.POP.TOTL              58230
-    48  SP.POP.GROW   1.09822902395737
-    49  SP.URB.TOTL              24113
-    50  SP.URB.GROW   0.53641727893261
-    51  SP.POP.TOTL              75055
-    52  SP.POP.GROW   1.65779341376666
-    53  SP.URB.TOTL           16028911
-    54  SP.URB.GROW  0.984333804176905
-    55  SP.POP.TOTL           19028802
-    56  SP.POP.GROW   1.14447285147721
-    57  SP.URB.TOTL            4824004
-    58  SP.URB.GROW -0.220175991539749
-    59  SP.POP.TOTL            8011566
-    60  SP.POP.GROW  0.240466652446524
-    61  SP.URB.TOTL            4135854
-    62  SP.URB.GROW   1.21344378120309
-    63  SP.POP.TOTL            8048600
-    64  SP.POP.GROW  0.821519963674211
-    65  SP.URB.TOTL             520130
-    66  SP.URB.GROW   4.62153763088361
-    67  SP.POP.TOTL            6307659
-    68  SP.POP.GROW    2.0417212041938
-    69  SP.URB.TOTL            9956937
-    70  SP.URB.GROW  0.308431312307231
-    71  SP.POP.TOTL           10251250
-    72  SP.POP.GROW  0.242517956221334
-    73  SP.URB.TOTL            2682552
-    74  SP.URB.GROW   3.87148751501267
-    75  SP.POP.TOTL            6998023
-    76  SP.POP.GROW   3.03845662138601
-    77  SP.URB.TOTL            2120383
-    78  SP.URB.GROW   6.85756484832227
-    79  SP.POP.TOTL           11882888
-    80  SP.POP.GROW   2.98388558736392
-    81  SP.URB.TOTL           30476706
-    82  SP.URB.GROW   3.56396663214103
-    83  SP.POP.TOTL          129193327
-    84  SP.POP.GROW   1.90552404891968
-    85  SP.URB.TOTL            5629167
-    86  SP.URB.GROW -0.171157650642926
-    87  SP.POP.TOTL            8170172
-    88  SP.POP.GROW -0.493896416633318
-    89  SP.URB.TOTL             628716
-    90  SP.URB.GROW   2.74720093000752
-    91  SP.POP.TOTL             711442
-    92  SP.POP.GROW    2.7515762605179
-    93  SP.URB.TOTL             266534
-    94  SP.URB.GROW   1.69321459564921
-    95  SP.POP.TOTL             325014
-    96  SP.POP.GROW   1.46976235766802
-    97  SP.URB.TOTL            1771376
-    98  SP.URB.GROW   1.37816316655527
-    99  SP.POP.TOTL            4179350
-    100 SP.POP.GROW  0.632139635256837
+         indicator            x2000
+    1  SP.URB.TOTL            41625
+    2  SP.URB.GROW 1.66422212392663
+    3  SP.POP.TOTL            89101
+    4  SP.POP.GROW 2.53923444445246
+    5  SP.URB.TOTL        115551653
+    6  SP.URB.GROW 3.60226233978761
+    7  SP.POP.TOTL        401600588
+    8  SP.POP.GROW  2.5835792421522
+    9  SP.URB.TOTL          4314700
+    10 SP.URB.GROW 1.86137729962901
 
 But wait. There’s more. Entering the chat now is
 [dbplyr](https://dbplyr.tidyverse.org), which uses dplyr verbs to
@@ -715,7 +627,7 @@ my_dbplyr_connection %>%
     # … with more rows, and 6 more variables: x2012 <chr>, x2013 <chr>,
     #   x2014 <chr>, x2015 <chr>, x2016 <chr>, x2017 <chr>
 
-# Wrangling data
+## Wrangling data
 
 OK. One thing we need to add is extract the ISO3 code of the country
 buried in the filename. We can extract those from the file name using
@@ -753,7 +665,7 @@ imported_data_collection_fixed_2
 
 Cool huh?
 
-# Pivot Data
+## Pivot Data
 
 OK. So remember how we imported all that data as character? We need to
 convert all those pop fields to integers.
@@ -813,7 +725,7 @@ imported_data_collection_fixed_3
 
 Voila!
 
-# Easy charting
+## Easy charting
 
 So let’s take our last dataset and do some charting. How about we chart
 China and India’s population?
@@ -854,9 +766,9 @@ p1 <- ggplot(data=ready_to_chart, aes(x=the_year, y=pop, group=country_code, col
 p1
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-29-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-27-1.png)
 
-# Do GIS stuff
+## Do GIS stuff
 
 OK. So we’ve all traditionally worked with desktop applications, such as
 QGIS or ArcGIS.
@@ -864,11 +776,6 @@ QGIS or ArcGIS.
 We can do all of that stuff in R.
 
 For vectors, we can use SF. For rasters, we can use stars.
-
-``` r
-#install.packages("stars")
-#install.packages("sf")
-```
 
 ``` r
 library(stars)
@@ -898,7 +805,7 @@ ggplot() +
   geom_stars(data=swiss_raster)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-33-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-30-1.png)
 
 Let’s say we wanted to see just the area around Zurich.
 
@@ -923,7 +830,7 @@ ggplot() +
   geom_sf(data=zurich_dot, color="red")
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-35-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-32-1.png)
 
 Now we’ve got a dot. Let’s buffer that dot.
 
@@ -941,7 +848,7 @@ ggplot() +
   geom_sf(data=zurich_25k_buffer, fill=NA, color="red")
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-37-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-34-1.png)
 
 Now let’s crop the raster by our buffer.
 
@@ -957,7 +864,7 @@ ggplot() +
   geom_stars(data=swiss_raster_cropped)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-39-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-36-1.png)
 
 I won’t go too far down the rabbit hole, but you can use [tidyverse
 methods](https://r-spatial.github.io/stars/articles/stars3.html) with
@@ -981,7 +888,7 @@ ggplot() +
   geom_stars(data=new_band_example)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-41-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-38-1.png)
 
 What if you’re like me and prefer to work in vectors?
 
@@ -1002,7 +909,7 @@ ggplot() +
   geom_sf(data=swiss_raster_cropped_sf)
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-43-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-40-1.png)
 
 What about a spatial filter?
 
@@ -1028,4 +935,4 @@ ggplot() +
   geom_sf(data=smaller_zurich_area, color="red")
 ```
 
-![](ten_things_files/figure-commonmark/unnamed-chunk-46-1.png)
+![](ten_things_files/figure-commonmark/unnamed-chunk-43-1.png)
