@@ -4,3 +4,4 @@ This repo is a presentation I wrote for colleagues. It shows 10 things I thought
 
 [Dive in](https://github.com/RyanMcNeillTR/ten_things_i_love_about_r/blob/main/ten_things.md). If you see anything wrong, let me know. 
 
+I've also [started a cookbook](https://github.com/RyanMcNeillTR/ten_things_i_love_about_r/blob/main/cookbook.md) of code snippets I find useful. 
